@@ -1,0 +1,23 @@
+User-agent: *
+Disallow: /4023/
+Disallow: /et/wf/
+Disallow: /form.html
+Disallow: /payback/
+Disallow: /30
+Disallow: /freunde
+Disallow: /gold
+Disallow: /agb-gs
+Disallow: /agb-gold
+Disallow: /dsl-handy/dsl/dsltarife/bestellen
+Disallow: /result/
+Disallow: /dsl/online-abschluss
+
+User-agent: TurnitinBot
+Disallow: /
+
+User-agent: MauiBot
+Disallow: /
+
+Sitemap: https://www.check24.de/news-sitemap.xml
+Sitemap: https://urlaub.check24.de/urlaub-sitemap.xml
+Sitemap: https://urlaub.check24.de/reiseziele-sitemap.xml
