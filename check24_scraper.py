@@ -38,44 +38,50 @@ driver.find_element_by_id('c24_calculate').click()
 PageStatus(driver, id='c24-cookie-button')
 
 # click on 'OK-Cookies' and then 'Alle tariffen' to remove filters
-try:
-    driver.find_element_by_class_name('c24-cookie-button').click()
-except:
-    driver.find_element_by_class_name('filter-setting__image--list').click()
-finally:
-    driver.find_element_by_class_name('filter-setting__image--list').click()
+import time
+time.sleep(5)
+driver.find_element_by_class_name('c24-cookie-button').click()
+from selenium.webdriver.common.action_chains import ActionChains
+ActionChains(driver).move_to_element(driver.find_element_by_class_name('filter-setting__image--list'))
+driver.find_element_by_class_name('filter-setting__image--list').click()
 PageStatus(driver, id='paginator__button')
 
 # click repeatedly on the button to load the rest of the contents
-import time
-# for i in range(0, 21):
-#     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-#     driver.find_element_by_class_name('paginator__button').click()
-#     time.sleep(5) # wait before checking page # BAD MOVE...but it serves the function for now!
-#     PageStatus(driver, id='paginator__button')
 try:
     while EC.presence_of_element_located((By.CLASS_NAME, 'paginator__button')):
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         driver.find_element_by_class_name('paginator__button').click()
-        time.sleep(5) # wait before checking page # BAD MOVE...but it serves the function for now!
+        time.sleep(3) # wait before checking page # BAD MOVE...but it serves the function for now!
         PageStatus(driver, id='paginator__button')
 except:
     print('All providers loaded!')
 
 elements = driver.find_elements_by_class_name("tariff-tabbar__tab--first")
+len(elements)
+type(elements)
 
-# Gets network information, including network calls
-def GetNetworkResources(driver):
-    Resources = driver.execute_script("return window.performance.getEntries();")
-    for resource in Resources:
-        print(resource['name'])
-    return Resources
 
 print(f'Clicking all {len(elements)} links is gonna take a while, go grab a nice coffee!')
-for e in elements:
+driver.execute_script("window.scrollTo(0, document.body.scrollHeight);") # scroll to end of page
+for e in reversed(elements): # then click elements in reverse order - trick to prevent pop-ups which could block the clicking
+    ActionChains(driver).move_to_element(e)
     e.click()
 
-GetNetworkResources(driver)
+# Gets network information, including network calls
+# def GetNetworkResources(driver):
+#     Resources = driver.execute_script("return window.performance.getEntries();")
+#     for resource in Resources:
+#         print(resource['name'])
+#         return Resources
+
+def GetNetworkResources(driver):
+    Resources = driver.execute_script("return window.performance.getEntries();")
+    names_list = []
+    for resource in Resources:
+        names_list.append(resource['name'])
+    return names_list
+
+net_data = GetNetworkResources(driver)
 type(net_data)
 
 
