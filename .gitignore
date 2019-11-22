@@ -1,5 +1,9 @@
 bin
+bmp.log
+c24scraper_functions.py
+geckodriver.log
+ghostdriver.log
 include
 lib
+server.log
 share
-geckodriver.log

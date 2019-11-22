@@ -1,7 +1,9 @@
-
-root = 'https://www.check24.de/strom-gas/'
-postcode = '10969'
-consumption = '7000'
+# Scrape Check24 to extract pricing of electricity from any provider available for Berlin Mitte
+# Modules required:
+# selenium (with geckodriver)
+# time
+# scrapy
+# pandas
 
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
@@ -21,6 +23,10 @@ def PageStatus(driver, id, timeout=5): # timeout expressed in seconds
         print("Timed out waiting for page to load")
     finally:
         print("Page loaded") # ensure that the page loads regularly
+
+root = 'https://www.check24.de/strom-gas/'
+postcode = '10969'
+consumption = '7000'
 
 driver.get(root)
 driver.maximize_window()
@@ -42,7 +48,9 @@ PageStatus(driver, id='c24-cookie-button')
 import time
 time.sleep(5)
 driver.find_element_by_class_name('c24-cookie-button').click()
+
 from selenium.webdriver.common.action_chains import ActionChains
+
 ActionChains(driver).move_to_element(driver.find_element_by_class_name('filter-setting__image--list'))
 driver.find_element_by_class_name('filter-setting__image--list').click()
 PageStatus(driver, id='paginator__button')
@@ -61,24 +69,6 @@ elements = driver.find_elements_by_class_name("tariff-tabbar__tab--first")
 type(elements)
 len(elements)
 
-#driver.page_source.encode("utf-8") # causes crash everytime
-# Gets network information, including network calls
-# def GetNetworkResources(driver):
-#     Resources = driver.execute_script("return window.performance.getEntries();")
-#     for resource in Resources:
-#         print(resource['name'])
-#         return Resources
-
-# def GetNetworkResources(driver):
-#     Resources = driver.execute_script("return window.performance.getEntries();")
-#     names_list = []
-#     for resource in Resources:
-#         names_list.append(resource['name'])
-#         return names_list
-
-# the above function returns all the calls, but only the last XHR call
-# find the way to catch the XHR call on the fly just after clicking and put it the the for loop
-
 print(f'Clicking all {len(elements)} links is gonna take a while, go grab a nice coffee!')
 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);") # scroll to end of page
 target = 'https://vergleich.check24.de/common/ajax/tariff_detail?'
@@ -86,56 +76,42 @@ net_names = list()
 for e in reversed(elements): # then click elements in reverse order - trick to prevent pop-ups which could block the clicking
     ActionChains(driver).move_to_element(e)
     e.click()
-    net_data = driver.execute_script("return window.performance.getEntries();")
-    for t in net_data:
-        name = t.get('name')
-        if target in name and name.endswith('tariff=no'):
-            net_names.append(name)
-        else:
-            continue
 
-len(net_names)
+tarif_tabs = driver.find_elements_by_class_name("ajax-tabs")
+type(tarif_tabs)
+len(tarif_tabs)
 
-
-
-
-
-url_api = ['https://vergleich.check24.de/common/ajax/tariff_detail?&calculationparameterId=2fc32fbf4ea74b9693cd1d7da2a0246a&tariffversionId=937662&tariffversionVariationKey=b-325169-b-875682-b-875683-b-875684&productId=1&c24_reference_tariff=no',
-'https://vergleich.check24.de/common/ajax/tariff_detail?&calculationparameterId=2fc32fbf4ea74b9693cd1d7da2a0246a&tariffversionId=936037&tariffversionVariationKey=b-874223-b-874224-b-874225&productId=1&c24_reference_tariff=no']
-
-import requests
-from requests.exceptions import HTTPError
 from scrapy import Selector
 import pandas as pd
 
-df = pd.DataFrame(columns = range(0, 13))
-colnames = []
+#t = tarif_tabs[3]
+
+df_list = list()
 values = []
-
-for url in url_api:
-    try:
-        # resp = requests.get(url + url_par)
-        resp = requests.get(url)
-
-        # If the response was successful, no Exception will be raised
-        resp.raise_for_status()
-    except HTTPError as http_err:
-        print(f'HTTP error occurred: {http_err}')
-    except Exception as err:
-        print(f'Other error occurred: {err}')
-    else:
-        print('Success!')
-
-    resp.encoding = 'utf-8'
-    html = resp.content
+for t in tarif_tabs:
+    html = t.get_attribute('innerHTML')
     sel = Selector(text=html)
     col = sel.xpath('.//div[contains(@class, "fact__label")]')
-    df.columns = ['Anbieter']+[str.strip().rstrip().replace('\\n', '') for str in col.xpath('./text()').extract()]
-    prov = sel.xpath('.//div[contains(@class, "ajax-provider")]')
-    provider = prov.xpath('.//text()').extract()[1].strip().rstrip().replace('\\n', '')
-    val = sel.xpath('.//div[contains(@class, "fact__value")]')
-    values = [str.strip().rstrip().replace('\\n', '') for str in val.xpath('./text()').extract()]
-    new_row = [provider] + values
-    df.loc[len(df) + 1, :] = new_row
+    if col != []:
+        df = pd.DataFrame(columns = ['Anbieter']+[str.strip().rstrip().replace('\\n', '') for str in col.xpath('./text()').extract()])
+        prov = sel.xpath('.//div[contains(@class, "ajax-provider")]')
+        provider = prov.xpath('.//text()').extract()[1].strip().rstrip().replace('\\n', '')
+        val = sel.xpath('.//div[contains(@class, "fact__value")]')
+        values = [str.strip().rstrip().replace('\\n', '') for str in val.xpath('./text()').extract()]
+        new_row = [provider] + values
+        df.loc[len(df) + 1, :] = new_row
+        df_list.append(df)
+    else:
+        continue
+len(df_list)
 
-df
+for i in range(len(df_list)):
+    print(i) ; print(df_list[i].columns.duplicated())
+
+df_list[107] = df_list[107].loc[:, ~df_list[107].columns.duplicated()]
+df_list[107].columns.duplicated()
+
+final = pd.concat(df_list, sort=False)
+final.shape
+final = final.fillna('NA')
+final.to_csv('electricity_prices_check24.csv', index=False)
