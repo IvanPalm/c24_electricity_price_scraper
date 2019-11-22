@@ -1,18 +1,18 @@
 
 root = 'https://www.check24.de/strom-gas/'
 postcode = '10969'
-consumption = '7000 KWh'
+consumption = '7000'
 
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 
 driver = webdriver.Firefox('/usr/local/bin/')
 
 ### Function PageStatus
-def PageStatus(driver, id, timeout=2): # timeout expressed in seconds
-    from selenium.common.exceptions import TimeoutException
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
-    from selenium.webdriver.common.by import By
+def PageStatus(driver, id, timeout=5): # timeout expressed in seconds
 
     try:
         element_present = EC.presence_of_element_located((By.ID, id))
@@ -23,6 +23,7 @@ def PageStatus(driver, id, timeout=2): # timeout expressed in seconds
         print("Page loaded") # ensure that the page loads regularly
 
 driver.get(root)
+driver.maximize_window()
 
 # fill in field for postcode
 in_postcode = driver.find_element_by_id('c24api_zipcode')
@@ -46,27 +47,21 @@ ActionChains(driver).move_to_element(driver.find_element_by_class_name('filter-s
 driver.find_element_by_class_name('filter-setting__image--list').click()
 PageStatus(driver, id='paginator__button')
 
-# click repeatedly on the button to load the rest of the contents
+# click repeatedly on the pagination button to load the rest of the contents
 try:
     while EC.presence_of_element_located((By.CLASS_NAME, 'paginator__button')):
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         driver.find_element_by_class_name('paginator__button').click()
-        time.sleep(3) # wait before checking page # BAD MOVE...but it serves the function for now!
+        #time.sleep(3) # wait before checking page # BAD MOVE...but it serves the function for now!
         PageStatus(driver, id='paginator__button')
 except:
     print('All providers loaded!')
 
 elements = driver.find_elements_by_class_name("tariff-tabbar__tab--first")
-len(elements)
 type(elements)
+len(elements)
 
-
-print(f'Clicking all {len(elements)} links is gonna take a while, go grab a nice coffee!')
-driver.execute_script("window.scrollTo(0, document.body.scrollHeight);") # scroll to end of page
-for e in reversed(elements): # then click elements in reverse order - trick to prevent pop-ups which could block the clicking
-    ActionChains(driver).move_to_element(e)
-    e.click()
-
+#driver.page_source.encode("utf-8") # causes crash everytime
 # Gets network information, including network calls
 # def GetNetworkResources(driver):
 #     Resources = driver.execute_script("return window.performance.getEntries();")
@@ -74,20 +69,32 @@ for e in reversed(elements): # then click elements in reverse order - trick to p
 #         print(resource['name'])
 #         return Resources
 
-def GetNetworkResources(driver):
-    Resources = driver.execute_script("return window.performance.getEntries();")
-    names_list = []
-    for resource in Resources:
-        names_list.append(resource['name'])
-    return names_list
+# def GetNetworkResources(driver):
+#     Resources = driver.execute_script("return window.performance.getEntries();")
+#     names_list = []
+#     for resource in Resources:
+#         names_list.append(resource['name'])
+#         return names_list
 
-net_data = GetNetworkResources(driver)
-type(net_data)
+# the above function returns all the calls, but only the last XHR call
+# find the way to catch the XHR call on the fly just after clicking and put it the the for loop
 
+print(f'Clicking all {len(elements)} links is gonna take a while, go grab a nice coffee!')
+driver.execute_script("window.scrollTo(0, document.body.scrollHeight);") # scroll to end of page
+target = 'https://vergleich.check24.de/common/ajax/tariff_detail?'
+net_names = list()
+for e in reversed(elements): # then click elements in reverse order - trick to prevent pop-ups which could block the clicking
+    ActionChains(driver).move_to_element(e)
+    e.click()
+    net_data = driver.execute_script("return window.performance.getEntries();")
+    for t in net_data:
+        name = t.get('name')
+        if target in name and name.endswith('tariff=no'):
+            net_names.append(name)
+        else:
+            continue
 
-
-
-
+len(net_names)
 
 
 
