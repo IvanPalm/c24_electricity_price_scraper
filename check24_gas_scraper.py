@@ -31,20 +31,10 @@ consumption = '35000'
 driver.get(root)
 driver.maximize_window()
 
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-
 # activate the tab GAS
-WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//*[text()='Gas']"))).click()
-
-
-
-tabs = driver.find_element_by_class_name("c24-toggle-tabs")
-ActionChains(driver).move_to_element(tabs)
-driver.find_element_by_class_name("c24-toggle-tab").click()
-driver.find_element_by_xpath("//*[text()='Gas']").click()
-
+tab = driver.find_element_by_xpath("//*[text()='Gas']")
+tab = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//*[text()='Gas']")))
+tab.click()
 
 # fill in field for postcode
 in_postcode = driver.find_element_by_id('c24api_zipcode')
@@ -64,7 +54,7 @@ import time
 time.sleep(5)
 driver.find_element_by_class_name('c24-cookie-button').click()
 
-# from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.action_chains import ActionChains
 
 ActionChains(driver).move_to_element(driver.find_element_by_class_name('filter-setting__image--list'))
 driver.find_element_by_class_name('filter-setting__image--list').click()
@@ -86,7 +76,6 @@ len(elements)
 
 print(f'Clicking all {len(elements)} links is gonna take a while, go grab a nice coffee!')
 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);") # scroll to end of page
-target = 'https://vergleich.check24.de/common/ajax/tariff_detail?'
 net_names = list()
 for e in reversed(elements): # then click elements in reverse order - trick to prevent pop-ups which could block the clicking
     ActionChains(driver).move_to_element(e)
@@ -98,8 +87,6 @@ len(tarif_tabs)
 
 from scrapy import Selector
 import pandas as pd
-
-#t = tarif_tabs[3]
 
 df_list = list()
 values = []
@@ -120,13 +107,21 @@ for t in tarif_tabs:
         continue
 len(df_list)
 
-for i in range(len(df_list)):
-    print(i) ; print(df_list[i].columns.duplicated())
-
-df_list[107] = df_list[107].loc[:, ~df_list[107].columns.duplicated()]
-df_list[107].columns.duplicated()
-
 final = pd.concat(df_list, sort=False)
 final.shape
 final = final.fillna('NA')
-final.to_csv('electricity_prices_check24.csv', index=False)
+
+# replace UTF-8 characters with correspondant ASCII
+final_ascii = final.replace('ä','ae', regex=True)
+final_ascii = final_ascii.replace('ü','ue', regex=True)
+final_ascii = final_ascii.replace('ö','oe', regex=True)
+final_ascii.columns = final_ascii.columns.str.replace('ä','ae')
+final_ascii.columns = final_ascii.columns.str.replace('ü','ue')
+final_ascii.columns = final_ascii.columns.str.replace('ö','oe')
+
+# split column Arbeitspreis into value and unit
+value_unit = final_ascii['Arbeitspreis'].str.split(' ', n=1, expand=True)
+final_ascii['Arbeitspreis_value'] = value_unit[0]
+final_ascii['Arbeitspreis_unit'] = value_unit[1]
+
+final_ascii.to_csv('heating_prices_check24.csv', index=False)

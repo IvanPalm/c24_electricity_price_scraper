@@ -1,8 +1,13 @@
 bin
 bmp.log
-c24scraper_functions.py
+electricity_prices_check24.csv
+electricity_prices_check24_edited.csv
+electricity_prices_check24_edited.xls
+electricity_prices_check24.xls
 geckodriver.log
 ghostdriver.log
+heating_prices_check24.csv
+heating_prices_check24.xls
 include
 lib
 server.log
